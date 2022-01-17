@@ -264,15 +264,6 @@ class admin():
     pass
 
 
-
-
-
-
-
-
-
-
-
 def len_upd():
     try:
         connection = connect()
@@ -365,5 +356,16 @@ def parse(type_call, call_id):
         connection.close()
 
 
+#work with product
 
 
+def get_product_card(id):
+    try:
+        connection = connect()
+        with connection.cursor() as cursor:
+            cursor.execute(f"SELECT * FROM product WHERE ID = 1")
+            print(cursor.fetchone())
+    except Exception as _ex:
+        print("[DB][ERR] pars: ", _ex)
+    finally:
+        connection.close()

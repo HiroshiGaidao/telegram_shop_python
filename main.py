@@ -71,15 +71,20 @@ def product_markup(sub_category_id, page = 0):
     markup.row_width = 3
     print(db.parse(5, sub_category_id))
     for i in range(len(ids[page])):
-        markup.add(InlineKeyboardButton(f"{i+1}. " + db.parse(4, int(ids[page][i])), callback_data=(f'Addtocart{ids[page][i]}')))
+        markup.add(InlineKeyboardButton(f"{i+1}. " + db.parse(4, int(ids[page][i])), callback_data=(f'product_card{ids[page][i]}')))
     markup.add(InlineKeyboardButton('<', callback_data=f'{page}|<|{sub_category_id}'), InlineKeyboardButton(f'{page + 1}/{len(ids)}', callback_data='qqqqq'), InlineKeyboardButton('>', callback_data=f'{page}|>|{sub_category_id}|{len(ids)}'))
     markup.add(InlineKeyboardButton('Назад', callback_data=f"back|{sub_category_id}"))
     markup.add(InlineKeyboardButton('К категориям', callback_data=f"back|0"))
     return markup
 
 
-#def message_for_product(page):
-#    for i in range(len(ids[page])):
+#                Карточка товара
+# Принимает в себя ID товара и ID пользователя и генерирует сообщение на выходе
+# Содержание сообщения: Фотография, название, описание, количество на складе, цена
+# Кнопки: < 0/количество > добавить в корзину, назад, к категориям
+def product_card(from_id, prod_id):
+    pass
+
 
 if __name__ == '__main__':
     print("System started, init DB")
@@ -127,6 +132,7 @@ if __name__ == '__main__':
 
     @bot.message_handler(func=lambda message: True)
     def massage_loop(message):
+        # Работа с сообщениями от пользователя создана для изменения персональных данных
         mess_from_user(message.chat.id)
         if db.user.check(message.chat.id)[0] == '11':
             db.user.change_state(message.chat.id, 12)
@@ -169,6 +175,7 @@ if __name__ == '__main__':
     def category_query(call):
         cat, sub_cat = db.len_upd()
         try:
+            # Вывод подкатегорий
             if call.data in cat:
                 try:
                     bot.edit_message_text(f"Для категории \"{db.parse(0, int(call.data))}\" найдены следующие подкатегории:", call.from_user.id, mess_state(call.from_user.id), reply_markup=sub_category_markup(
@@ -181,33 +188,48 @@ if __name__ == '__main__':
                     print(call.data)
                     mess_editor(call.from_user.id, back.message_id)
             elif call.data.split('prod')[0] == '':
-                back = bot.send_message(call.from_user.id, f"Товары в категории {str(db.parse(1, int(call.data.split('prod')[1])))}: ",
-                                        reply_markup=product_markup(int(call.data.split('prod')[1])))
-                mess_editor(call.from_user.id, back.message_id)
+                #Страница продуктов для определенной категории
+                if mess_state(call.from_user.id) != 'Null':
+                    bot.edit_message_text(f"Товары в категории {str(db.parse(1, int(call.data.split('prod')[1])))}: ", call.from_user.id, mess_state(call.from_user.id), reply_markup=product_markup(int(call.data.split('prod')[1])))
+                else:
+                    back = bot.send_message(call.from_user.id, f"Товары в категории {str(db.parse(1, int(call.data.split('prod')[1])))}: ",
+                                            reply_markup=product_markup(int(call.data.split('prod')[1])))
+                    mess_editor(call.from_user.id, back.message_id)
             elif call.data == "market":
-                back = bot.send_message(call.from_user.id, "Для просмотра товаров выберите одну из категорий: ",
-                                 reply_markup=category_markup())
-                mess_editor(call.from_user.id, back.message_id)
+                if mess_state(call.from_user.id) != 'Null':
+                    bot.edit_message_text("Для просмотра товаров выберите одну из категорий: ",
+                                          call.from_user.id, mess_state(call.from_user.id),
+                                          reply_markup=category_markup())
+                else:
+                    back = bot.send_message(call.from_user.id, "Для просмотра товаров выберите одну из категорий: ",
+                                     reply_markup=category_markup())
+                    mess_editor(call.from_user.id, back.message_id)
             elif call.data == 'phone':
+                # Замена телефона существующего пользователя
                 db.user.change_state(call.from_user.id, 41)
                 bot.send_message(call.from_user.id, "Введите новый номер телефона: ")
             elif call.data == 'full_name':
+                # Замена ФИО существующего пользователя
                 db.user.change_state(call.from_user.id, 42)
                 bot.send_message(call.from_user.id, "Введите новое ФИО: ")
             elif call.data == 'address':
+                # Замена адреса существующего пользователя
                 db.user.change_state(call.from_user.id, 41)
                 bot.send_message(call.from_user.id, "Введите новый адрес: ")
             elif call.data.split('|')[1] == '<' and int(call.data.split('|')[0]) != 0:
+                # Страница товаров назад
                 page = int(call.data.split('|')[0]) - 1
                 id = int(call.data.split('|')[2])
                 back = bot.send_message(call.from_user.id, 'text', reply_markup=product_markup(id, page))
                 mess_editor(call.from_user.id, back.message_id)
             elif call.data.split('|')[1] == '>' and int(call.data.split('|')[3]) > (int(call.data.split('|')[0]) + 1):
+                #Страница товаров вперед
                 page = int(call.data.split('|')[0]) + 1
                 id = int(call.data.split('|')[2])
                 back = bot.send_message(call.from_user.id, 'text', reply_markup=product_markup(id, page))
                 mess_editor(call.from_user.id, back.message_id)
             elif call.data.split('|')[0] == 'back':
+                #Кнопка возврата в меню
                 print("back btn")
                 print(call.data)
                 if call.data.split('|')[1] == '0':
@@ -216,8 +238,9 @@ if __name__ == '__main__':
                         bot.edit_message_text("Для просмотра товаров выберите одну из категорий: ", call.from_user.id, mess_state(call.from_user.id), reply_markup=category_markup())
                     else:
 
-                        bot.send_message(call.from_user.id, "Для просмотра товаров выберите одну из категорий: ",
+                        back = bot.send_message(call.from_user.id, "Для просмотра товаров выберите одну из категорий: ",
                                          reply_markup=category_markup())
+                        mess_editor(call.from_user.id, back.message_id)
                 else:
                     if mess_state(call.from_user.id) != 'Null':
 
