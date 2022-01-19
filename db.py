@@ -181,7 +181,8 @@ class user():
             finally:
                 connection.close()
             return
-
+        def add():
+            pass
         def view(user_id):
             pass
         def send(user_id):
@@ -227,12 +228,13 @@ class admin():
                 connection = connect()
                 a = []
                 with connection.cursor() as cursor:
-                    for i in cursor.execute(f"SELECT ID FROM subcategory WHERE PARENT_ID = {category_id}"):
-                        a.append(i[0])
+                    cursor.execute(f"SELECT ID FROM subcategory WHERE PARENT_ID = {category_id}")
+                    a = cursor.fetchall()
                     for i in a:
-                        cursor.execute(f"DELETE FROM product WHERE PARENT_ID = {i}")
-                        cursor.execute(f"DELETE FROM subcategory WHERE ID = {i}")
+                        cursor.execute(f"DELETE FROM product WHERE PARENT_ID = {i[0]}")
+                        cursor.execute(f"DELETE FROM subcategory WHERE ID = {i[0]}")
                     cursor.execute(f"DELETE FROM category WHERE ID = {category_id}")
+
             except Exception as _ex:
                 print("[DB][ERR] del category: ", _ex)
             finally:
@@ -269,7 +271,6 @@ def len_upd():
         connection = connect()
         cat_ids = []
         sub_cat_id = []
-        prod_id = []
         with connection.cursor() as cursor:
             cursor.execute("SELECT ID FROM category")
             raw = cursor.fetchall()
@@ -356,15 +357,54 @@ def parse(type_call, call_id):
         connection.close()
 
 
-#work with product
+#work with productor
+
+def cats():
+    try:
+        connection = connect()
+        with connection.cursor() as cursor:
+            cursor.execute(f"SELECT * FROM category")
+            i = cursor.fetchall()
+            return i
+    except Exception as _ex:
+        print("[DB][ERR] pars: ", _ex)
+    finally:
+        connection.close()
+
+
+def sub_cats(parent_id):
+    try:
+        connection = connect()
+        with connection.cursor() as cursor:
+            cursor.execute(f"SELECT ID, NAME FROM subcategory WHERE PARENT_ID = {parent_id}")
+            i = cursor.fetchall()
+            return i
+    except Exception as _ex:
+        print("[DB][ERR] pars: ", _ex)
+    finally:
+        connection.close()
+
+
+def prods(parent_id):
+    try:
+        connection = connect()
+        with connection.cursor() as cursor:
+            cursor.execute(f"SELECT ID, NAME FROM product WHERE PARENT_ID = {parent_id}")
+            i = cursor.fetchall()
+            return i
+    except Exception as _ex:
+        print("[DB][ERR] pars: ", _ex)
+    finally:
+        connection.close()
 
 
 def get_product_card(id):
     try:
         connection = connect()
         with connection.cursor() as cursor:
-            cursor.execute(f"SELECT * FROM product WHERE ID = 1")
-            print(cursor.fetchone())
+            cursor.execute(f"SELECT * FROM product WHERE ID = {id}")
+            i = cursor.fetchone()
+            return i
     except Exception as _ex:
         print("[DB][ERR] pars: ", _ex)
     finally:
