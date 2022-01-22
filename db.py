@@ -148,7 +148,9 @@ class user():
         finally:
             connection.close()
     class cart():
-        def delete(user_id):
+        def __init__(self):
+            pass
+        def delete(self, user_id):
             try:
                 connection = connect()
                 with connection.cursor() as cursor:
@@ -159,7 +161,7 @@ class user():
                 connection.close()
             return
 
-        def dell_product(user_id, prod_id):
+        def dell_product(self, user_id, prod_id):
             try:
                 connection = connect()
                 with connection.cursor() as cursor:
@@ -170,7 +172,7 @@ class user():
                 connection.close()
             return
 
-        def change_count(user_id, prod_id, new_count):
+        def change_count(self, user_id, prod_id, new_count):
             try:
                 connection = connect()
                 with connection.cursor() as cursor:
@@ -181,10 +183,52 @@ class user():
             finally:
                 connection.close()
             return
-        def add():
-            pass
-        def view(user_id):
-            pass
+        def add(self, user_id, product_id, count):
+            try:
+                connection = connect()
+                with connection.cursor() as cursor:
+                    cursor.execute(f"INSERT INTO cart (ID, PRODUCT_ID, COUNT) VALUES ({user_id},{product_id},{count}")
+            except Exception as _ex:
+                print(f"[DB][ERR] add product in cart for user: {user_id}: ", _ex)
+            finally:
+                connection.close()
+        def add_logic(self, user_id, product_id, get_count):
+            try:
+                connection = connect()
+                with connection.cursor() as cursor:
+                    cursor.execute(f"SELECT COUNT FROM product WHERE ID = {product_id}")
+                    has_count = cursor.fetchone()[0][0]
+                    count = self.get_count(user_id, product_id)
+                    if count != 0:
+                        new_count = int(get_count) + int(count)
+                        if new_count > has_count:
+                            return 0
+                        else:
+                            self.change_count(user_id, product_id, new_count)
+                            return 1
+                    else:
+                        self.add(user_id, product_id, get_count)
+                        return 2
+            except Exception as _ex:
+                print("[add or edit cart in db]")
+            finally:
+                connection.close()
+            
+        def get_count(self, user_id, product_id):
+            try:
+                connection = connect()
+                with connection.cursor() as cursor:
+                    cursor.execute(f"SELECT COUNT FROM cart WHERE ID = {user_id} AND PRODUCT_ID = {product_id}")
+                    count = cursor.fetchone()
+                    if count == []:
+                        return 0
+                    else:
+                        return count[0][0]
+            except Exception as _ex:
+                print("[add or edit cart in db]")
+                return 0
+            finally:
+                connection.close()
         def send(user_id):
             pass
 

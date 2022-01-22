@@ -79,7 +79,7 @@ def product_markup(sub_category_id, page=0):
         markup.add(InlineKeyboardButton(f"{i + 1}. " + db.parse(4, int(ids[page][i])),
                                         callback_data=(f'product_card{ids[page][i]}')))
     markup.add(InlineKeyboardButton('<', callback_data=f'{page}|<|{sub_category_id}'),
-               InlineKeyboardButton(f'{page + 1}/{len(ids)}', callback_data='qqqqq'),
+               InlineKeyboardButton(f'{page + 1}/{len(ids)}', callback_data='None'),
                InlineKeyboardButton('>', callback_data=f'{page}|>|{sub_category_id}|{len(ids)}'))
     markup.add(InlineKeyboardButton('Назад', callback_data=f"back|{sub_category_id}"))
     markup.add(InlineKeyboardButton('К категориям', callback_data=f"back|0"))
@@ -90,14 +90,45 @@ def product_markup(sub_category_id, page=0):
 # Принимает в себя ID товара и ID пользователя и генерирует сообщение на выходе
 # Содержание сообщения: Фотография, название, описание, количество на складе, цена
 # Кнопки: < 0/количество > добавить в корзину, назад, к категориям
-def product_card(from_id, prod_id):
-    pass
+def product_card(from_id, prod_id, cart_count=0, edit=False):
+    if edit is False:
+        cart_count = db.user.cart.get_count(user_id=from_id, product_id=prod_id)
+    card = db.get_product_card(prod_id)
+    sub_id = card[1]
+    name = card[2]
+    discription = card[3]
+    path_photo = card[4]
+    cost = card[5]
+    count = card[6]
+    message = f"{name}\n\n" \
+              f"{discription}\n\n" \
+              f"Цена : {cost}\n" \
+              f"В наличии : {count}\n"
+    markup = InlineKeyboardMarkup()
+    markup.row_width = 3
+    markup.add(InlineKeyboardButton("-", callback_data=f'bue_count|{prod_id}|-|{cart_count}'),
+               InlineKeyboardButton(f"{cart_count}/{count}", callback_data="None"),
+               InlineKeyboardButton("+", callback_data=f"bue_count|{prod_id}|+|{cart_count}|{count}"))
+    markup.add(InlineKeyboardButton(f"Добавить в корзину {cart_count} шт.", callback_data=f"add_to_cart|{from_id}|{prod_id}|{cart_count}"))
+    markup.add(InlineKeyboardButton("Назад", callback_data=f"back|{sub_id}"))
+    markup.add(InlineKeyboardButton('К категориям', callback_data=f"back|0"))
+    if edit == True:
+        if mess_state(from_id) != 'Null':
+            bot.edit_message_reply_markup(from_id, mess_state(from_id), reply_markup=markup)
+        else:
+            back = bot.send_photo(from_id, open(path_photo, "rb"), message, reply_markup=markup)
+            mess_editor(from_id, back.message_id)
+    else:
+        back = bot.send_photo(from_id, open(path_photo, "rb"), message, reply_markup=markup)
+        mess_editor(from_id, back.message_id)
 
 
 if __name__ == '__main__':
     try:
         os.mkdir(config.folder + 'images')
+        print("images folder added and ready")
     except:
+        print("images folder ready to work")
         pass
     print("System started, init DB")
     db.create_db()
@@ -271,6 +302,24 @@ if __name__ == '__main__':
                         bot.send_message(call.from_user.id,
                                          f"Для категории \"{db.parse(0, db.parse(5, int(call.data.split('|')[1])))}\" найдены следующие подкатегории:",
                                          reply_markup=sub_category_markup(db.parse(5, int(call.data.split('|')[1]))))
+            elif call.data.split('|')[0] == "bue_count":
+                if call.data.split('|')[2] == '-' and int(call.data.split('|')[3]) != 0:
+                    cart_count = int(call.data.split('|')[3]) - 1
+                    product_card(call.from_user.id, call.data.split('|')[1], cart_count, True)
+                elif call.data.split('|')[2] == '+' and int(call.data.split('|')[3]) < int(call.data.split('|')[4]):
+                    cart_count = int(call.data.split('|')[3]) + 1
+                    product_card(call.from_user.id, call.data.split('|')[1], cart_count, True)
+            elif call.data.split('|')[0] == "add_to_cart":
+                db.user.cart.add_logic(user_id=call.data.split('|')[1], product_id=call.data.split('|')[2], get_count=int(call.data.split('|')[3]))
+
+                if mess_state(call.from_user.id) != 'Null':
+                    bot.edit_message_text("Товар добавлен в корзину\nДля просмотра товаров выберите одну из категорий: ",
+                                          call.from_user.id, mess_state(call.from_user.id),
+                                          reply_markup=category_markup())
+                else:
+                    back = bot.send_message(call.from_user.id, "Товар добавлен в корзину\nДля просмотра товаров выберите одну из категорий: ",
+                                            reply_markup=category_markup())
+                    mess_editor(call.from_user.id, back.message_id)
         except Exception as _ex:
             print("[CallBack]", _ex)
             pass
