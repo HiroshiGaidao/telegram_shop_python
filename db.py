@@ -149,6 +149,7 @@ class user():
             connection.close()
     class cart():
         def __init__(self):
+            super().__init__()
             pass
         def delete(self, user_id):
             try:
@@ -210,22 +211,24 @@ class user():
                         self.add(user_id, product_id, get_count)
                         return 2
             except Exception as _ex:
-                print("[add or edit cart in db]")
+                print("[add or edit cart in db]", _ex)
             finally:
                 connection.close()
-            
+
         def get_count(self, user_id, product_id):
+            print(self, user_id, product_id)
             try:
                 connection = connect()
                 with connection.cursor() as cursor:
                     cursor.execute(f"SELECT COUNT FROM cart WHERE ID = {user_id} AND PRODUCT_ID = {product_id}")
                     count = cursor.fetchone()
-                    if count == []:
+                    print(count)
+                    if count == [] or count is None:
                         return 0
                     else:
                         return count[0][0]
             except Exception as _ex:
-                print("[add or edit cart in db]")
+                print("[add or edit cart in db]", _ex)
                 return 0
             finally:
                 connection.close()

@@ -65,7 +65,7 @@ def sub_category_markup(category_id):
     markup.row_width = 1
     ids = db.parse(2, category_id)
     for i in ids:
-        markup.add(InlineKeyboardButton(db.parse(1, int(i)), callback_data=('prod' + str(i))))
+        markup.add(InlineKeyboardButton(db.parse(1, int(i)), callback_data=('prod|' + str(i))))
     markup.add(InlineKeyboardButton('Назад', callback_data=f"back|0"))
     return markup
 
@@ -77,7 +77,7 @@ def product_markup(sub_category_id, page=0):
     print(db.parse(5, sub_category_id))
     for i in range(len(ids[page])):
         markup.add(InlineKeyboardButton(f"{i + 1}. " + db.parse(4, int(ids[page][i])),
-                                        callback_data=(f'product_card{ids[page][i]}')))
+                                        callback_data=(f'product_card|{ids[page][i]}')))
     markup.add(InlineKeyboardButton('<', callback_data=f'{page}|<|{sub_category_id}'),
                InlineKeyboardButton(f'{page + 1}/{len(ids)}', callback_data='None'),
                InlineKeyboardButton('>', callback_data=f'{page}|>|{sub_category_id}|{len(ids)}'))
@@ -91,8 +91,9 @@ def product_markup(sub_category_id, page=0):
 # Содержание сообщения: Фотография, название, описание, количество на складе, цена
 # Кнопки: < 0/количество > добавить в корзину, назад, к категориям
 def product_card(from_id, prod_id, cart_count=0, edit=False):
+    cart = db.user.cart()
     if edit is False:
-        cart_count = db.user.cart.get_count(user_id=from_id, product_id=prod_id)
+        cart_count = cart.get_count(user_id=from_id, product_id=prod_id)
     card = db.get_product_card(prod_id)
     sub_id = card[1]
     name = card[2]
@@ -217,6 +218,7 @@ if __name__ == '__main__':
     @bot.callback_query_handler(func=lambda call: True)
     def category_query(call):
         cat, sub_cat = db.len_upd()
+        print(call.data)
         try:
             # Вывод подкатегорий
             if call.data in cat:
@@ -232,12 +234,12 @@ if __name__ == '__main__':
                                             reply_markup=sub_category_markup(call.data))
                     print(call.data)
                     mess_editor(call.from_user.id, back.message_id)
-            elif call.data.split('prod')[0] == '':
+            elif call.data.split('|')[0] == 'prod':
                 # Страница продуктов для определенной категории
                 if mess_state(call.from_user.id) != 'Null':
-                    bot.edit_message_text(f"Товары в категории {str(db.parse(1, int(call.data.split('prod')[1])))}: ",
+                    bot.edit_message_text(f"Товары в категории {str(db.parse(1, int(call.data.split('|')[1])))}: ",
                                           call.from_user.id, mess_state(call.from_user.id),
-                                          reply_markup=product_markup(int(call.data.split('prod')[1])))
+                                          reply_markup=product_markup(int(call.data.split('|')[1])))
                 else:
                     back = bot.send_message(call.from_user.id,
                                             f"Товары в категории {str(db.parse(1, int(call.data.split('prod')[1])))}: ",
@@ -270,7 +272,7 @@ if __name__ == '__main__':
                 id = int(call.data.split('|')[2])
                 back = bot.send_message(call.from_user.id, 'text', reply_markup=product_markup(id, page))
                 mess_editor(call.from_user.id, back.message_id)
-            elif call.data.split('|')[1] == '>' and int(call.data.split('|')[3]) > (int(call.data.split('|')[0]) + 1):
+#            elif call.data.split('|')[1] == '>' and int(call.data.split('|')[3]) > (int(call.data.split('|')[0]) + 1):
                 # Страница товаров вперед
                 page = int(call.data.split('|')[0]) + 1
                 id = int(call.data.split('|')[2])
@@ -303,23 +305,32 @@ if __name__ == '__main__':
                                          f"Для категории \"{db.parse(0, db.parse(5, int(call.data.split('|')[1])))}\" найдены следующие подкатегории:",
                                          reply_markup=sub_category_markup(db.parse(5, int(call.data.split('|')[1]))))
             elif call.data.split('|')[0] == "bue_count":
+                print(1)
                 if call.data.split('|')[2] == '-' and int(call.data.split('|')[3]) != 0:
+                    print(2)
                     cart_count = int(call.data.split('|')[3]) - 1
                     product_card(call.from_user.id, call.data.split('|')[1], cart_count, True)
                 elif call.data.split('|')[2] == '+' and int(call.data.split('|')[3]) < int(call.data.split('|')[4]):
+                    print(3)
                     cart_count = int(call.data.split('|')[3]) + 1
                     product_card(call.from_user.id, call.data.split('|')[1], cart_count, True)
             elif call.data.split('|')[0] == "add_to_cart":
-                db.user.cart.add_logic(user_id=call.data.split('|')[1], product_id=call.data.split('|')[2], get_count=int(call.data.split('|')[3]))
+                cart = db.user.cart()
+                cart.add_logic(user_id=call.data.split('|')[1], product_id=call.data.split('|')[2], get_count=int(call.data.split('|')[3]))
 
                 if mess_state(call.from_user.id) != 'Null':
+                    print(5)
                     bot.edit_message_text("Товар добавлен в корзину\nДля просмотра товаров выберите одну из категорий: ",
                                           call.from_user.id, mess_state(call.from_user.id),
                                           reply_markup=category_markup())
                 else:
+                    print(6)
                     back = bot.send_message(call.from_user.id, "Товар добавлен в корзину\nДля просмотра товаров выберите одну из категорий: ",
                                             reply_markup=category_markup())
                     mess_editor(call.from_user.id, back.message_id)
+            elif call.data.split('|')[0] == 'product_card':
+                product_card(call.from_user.id, int(call.data.split('|')[1]))
+
         except Exception as _ex:
             print("[CallBack]", _ex)
             pass
